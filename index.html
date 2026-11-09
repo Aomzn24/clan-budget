@@ -75,7 +75,7 @@
 
     <script>
         // ⚠️ ใส่ Web App URL ของคุณตรงนี้
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwzKzWeZgxqbhHXiQQL6OmlsXjLhfwgfT96QlazZjaq5G-lJ4GBNLkJ0rKTTo7quTDL/exec";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzUPc9mkHUC2blHr8hYHm8XvrfEBcmvb6XwuS9qsor938zhBQdHMwqWvesqlmsK4BIh/exec";
 
         async function fetchData() {
             try {
@@ -127,6 +127,37 @@
             document.getElementById('adminPanel').classList.toggle('hidden');
         }
 
+        // ฟังก์ชันบีบอัดรูปภาพในเครื่องให้อัตโนมัติ (ขนาดเล็ก ส่งผ่านง่าย ไม่ติด Error)
+        function compressImage(file) {
+            return new Promise((resolve) => {
+                let reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function (e) {
+                    let img = new Image();
+                    img.src = e.target.result;
+                    img.onload = function () {
+                        let canvas = document.createElement('canvas');
+                        let maxWidth = 500; // บีบความกว้างไม่เกิน 500px เพื่อให้ไฟล์เล็กจิ๋ว
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        let ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // แปลงเป็นรหัสภาพคุณภาพ 0.6 (ขนาดเล็กมากๆ โหลดไว ส่งเข้า Sheet ได้ชัวร์)
+                        resolve(canvas.toDataURL('image/jpeg', 0.6));
+                    };
+                };
+            });
+        }
+
         async function handleSubmit(event) {
             event.preventDefault();
             let btn = document.getElementById('submitBtn');
@@ -138,23 +169,15 @@
             let slipUrl = "";
 
             try {
-                // ถ้ามีการเลือกรูปภาพ ใช้วิธีอัปโหลดผ่านบริการสาธารณะแบบไม่ต้องใช้ API Key
                 if (fileInput.files.length > 0) {
-                    btn.innerText = 'กำลังอัปโหลดรูปภาพ...';
+                    btn.innerText = 'กำลังย่อรูปและอัปโหลด...';
                     let file = fileInput.files[0];
-                    let formData = new FormData();
-                    formData.append("reqtype", "fileupload");
-                    formData.append("fileToUpload", file);
-
-                    let uploadRes = await fetch("https://catbox.moe/user/api.php", {
-                        method: "POST",
-                        body: formData
-                    });
-                    slipUrl = await uploadRes.text();
+                    // บีบอัดรูปก่อนส่ง
+                    slipUrl = await compressImage(file);
                 }
 
                 btn.innerText = 'กำลังบันทึกข้อมูล...';
-                let payload = { name: name, amount: amount, slipUrl: slipUrl.trim() };
+                let payload = { name: name, amount: amount, slipUrl: slipUrl };
 
                 await fetch(WEB_APP_URL, {
                     method: 'POST',
@@ -163,7 +186,7 @@
                     body: JSON.stringify(payload)
                 });
 
-                alert('บันทึกข้อมูลสำเร็จ!');
+                alert('บันทึกข้อมูลและแนบสลิปสำเร็จ!');
                 document.getElementById('addForm').reset();
                 toggleAdminPanel();
                 setTimeout(fetchData, 1500);
