@@ -4,34 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>เงินแคลน Buddy!</title>
-    <!-- โหลด Tailwind CSS สำหรับแต่งเว็บสวยๆ -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Prompt', sans-serif; }
-    </style>
+    <style> body { font-family: 'Prompt', sans-serif; } </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen py-8 px-4">
 
     <div class="max-w-2xl mx-auto">
-        <!-- หัวข้อเว็บ -->
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-emerald-400 mb-2">💰 เงินแคลน Buddy!</h1>
             <p class="text-slate-400 text-sm">ระบบตรวจสอบยอดเงินและความโปร่งใส (อัปเดตตลอด 24 ชม.)</p>
         </div>
 
-        <!-- กล่องแสดงยอดรวมสุทธิ -->
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 mb-6 shadow-lg flex justify-between items-center">
             <div>
                 <p class="text-slate-400 text-sm">ยอดรวมสุทธิทั้งหมด</p>
                 <h2 id="totalBalance" class="text-3xl font-extrabold text-white mt-1">กำลังโหลด...</h2>
             </div>
             <button onclick="toggleAdminPanel()" class="bg-slate-700 hover:bg-slate-600 text-xs text-slate-300 px-3 py-2 rounded-lg transition">
-                ⚙️ โหมดแอดมิน
+                ⚙️ แก้ไขข้อมูล
             </button>
         </div>
 
-        <!-- แผงควบคุมของแอดมิน (ซ่อนไว้เริ่มต้น) -->
+        <!-- แผงแอดมิน (เปลี่ยนช่องสลิปเป็นอัปโหลดไฟล์) -->
         <div id="adminPanel" class="hidden bg-slate-800 border border-emerald-500/30 rounded-2xl p-6 mb-6 shadow-xl">
             <h3 class="text-lg font-semibold text-emerald-400 mb-4">🔧 เพิ่มรายการ (สำหรับแอดมิน)</h3>
             <form id="addForm" onsubmit="handleSubmit(event)" class="space-y-4">
@@ -44,16 +39,15 @@
                     <input type="number" id="inputAmount" required placeholder="100" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-emerald-500">
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">ลิงก์รูปสลิป (URL รูปภาพ)</label>
-                    <input type="text" id="inputSlip" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-emerald-500">
+                    <label class="block text-xs text-slate-400 mb-1">แนบรูปสลิป (เลือกรูปภาพจากเครื่อง)</label>
+                    <input type="file" id="inputSlipFile" accept="image/*" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-700 file:text-emerald-300 hover:file:bg-slate-600 cursor-pointer">
                 </div>
                 <button type="submit" id="submitBtn" class="w-full bg-emerald-500 hover:bg-emerald-600 font-medium py-2 rounded-xl transition text-slate-950">
-                    บันทึกข้อมูลลง Sheets
+                    บันทึกข้อมูลและอัปโหลดสลิป
                 </button>
             </form>
         </div>
 
-        <!-- ตารางแสดงรายชื่อเพื่อน -->
         <div class="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden shadow-lg">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
@@ -65,16 +59,13 @@
                         </tr>
                     </thead>
                     <tbody id="tableBody" class="divide-y divide-slate-700/55 text-sm">
-                        <tr>
-                            <td colspan="3" class="py-6 text-center text-slate-500">กำลังดึงข้อมูล...</td>
-                        </tr>
+                        <tr><td colspan="3" class="py-6 text-center text-slate-500">กำลังดึงข้อมูล...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Modal สำหรับแสดงรูปสลิปขนาดใหญ่ -->
     <div id="slipModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-50" onclick="closeModal()">
         <div class="relative max-w-lg w-full bg-slate-800 rounded-2xl p-4 overflow-hidden">
             <img id="modalImg" src="" alt="สลิปโอนเงิน" class="w-full h-auto rounded-lg">
@@ -83,8 +74,7 @@
     </div>
 
     <script>
-        // ⚠️ นำ Web App URL ที่ได้จากขั้นตอนที่ 2 มาใส่ไว้ในเครื่องหมายคำพูดนี้
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz733YnLDVC51yVmrUTfMle4jSarlxnieYZKeztvNahMHGdU_UnozZYTr2dGQ-WtSOS/exec";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwv77OWQ3muOJI1AAosuBoCIHOuJEk5b647E3x-neEiE8VlyhkVGpDKbFQsVCkc8RiL/exec"; // อย่าลืมใส่ URL ของคุณ
 
         async function fetchData() {
             try {
@@ -133,22 +123,38 @@
         }
 
         function toggleAdminPanel() {
-            let panel = document.getElementById('adminPanel');
-            panel.classList.toggle('hidden');
+            document.getElementById('adminPanel').classList.toggle('hidden');
         }
 
         async function handleSubmit(event) {
             event.preventDefault();
             let btn = document.getElementById('submitBtn');
             btn.disabled = true;
-            btn.innerText = 'กำลังบันทึก...';
+            btn.innerText = 'กำลังอัปโหลดและบันทึก...';
 
-            let payload = {
-                name: document.getElementById('inputName').value,
-                amount: document.getElementById('inputAmount').value,
-                slipUrl: document.getElementById('inputSlip').value
-            };
+            let name = document.getElementById('inputName').value;
+            let amount = document.getElementById('inputAmount').value;
+            let fileInput = document.getElementById('inputSlipFile');
 
+            let payload = { name: name, amount: amount };
+
+            if (fileInput.files.length > 0) {
+                let file = fileInput.files[0];
+                let reader = new FileReader();
+                
+                reader.onload = async function(e) {
+                    payload.fileData = e.target.result;
+                    payload.fileName = file.name;
+                    payload.fileMimeType = file.type;
+                    await sendDataToSheet(payload, btn);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                await sendDataToSheet(payload, btn);
+            }
+        }
+
+        async function sendDataToSheet(payload, btn) {
             try {
                 await fetch(WEB_APP_URL, {
                     method: 'POST',
@@ -157,16 +163,16 @@
                     body: JSON.stringify(payload)
                 });
 
-                alert('บันทึกข้อมูลสำเร็จ!');
+                alert('บันทึกข้อมูลและอัปโหลดสำเร็จ!');
                 document.getElementById('addForm').reset();
                 toggleAdminPanel();
-                setTimeout(fetchData, 1500); // รอ 1.5 วิแล้วดึงข้อมูลใหม่มาแสดง
+                setTimeout(fetchData, 2000); // รอ 2 วินาทีแล้วโหลดตารางใหม่
             } catch (error) {
                 alert('เกิดข้อผิดพลาดในการบันทึก');
                 console.error(error);
             } finally {
                 btn.disabled = false;
-                btn.innerText = 'บันทึกข้อมูลลง Sheets';
+                btn.innerText = 'บันทึกข้อมูลและอัปโหลดสลิป';
             }
         }
 
@@ -181,7 +187,6 @@
             document.getElementById('slipModal').classList.add('hidden');
         }
 
-        // โหลดข้อมูลอัตโนมัติเมื่อเปิดหน้าเว็บ
         fetchData();
     </script>
 </body>
