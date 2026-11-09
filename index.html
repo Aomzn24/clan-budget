@@ -22,7 +22,7 @@
                 <h2 id="totalBalance" class="text-3xl font-extrabold text-white mt-1">กำลังโหลด...</h2>
             </div>
             <button onclick="toggleAdminPanel()" class="bg-slate-700 hover:bg-slate-600 text-xs text-slate-300 px-3 py-2 rounded-lg transition">
-                ⚙️ โหมดแอดมิน
+                ⚙️ แก้ไขข้อมูล
             </button>
         </div>
 
@@ -75,7 +75,7 @@
 
     <script>
         // ⚠️ ใส่ Web App URL ของคุณตรงนี้
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwq1OSbMEf3IUPZA3ome7MajH8C3JxcDUSLhNK8ThtyyfiBJ8CtrpmQ4H_NhCrbk5sm/exec";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwzKzWeZgxqbhHXiQQL6OmlsXjLhfwgfT96QlazZjaq5G-lJ4GBNLkJ0rKTTo7quTDL/exec";
 
         async function fetchData() {
             try {
@@ -131,49 +131,44 @@
             event.preventDefault();
             let btn = document.getElementById('submitBtn');
             btn.disabled = true;
-            btn.innerText = 'กำลังอัปโหลดสลิปและบันทึก...';
 
             let name = document.getElementById('inputName').value;
             let amount = document.getElementById('inputAmount').value;
             let fileInput = document.getElementById('inputSlipFile');
+            let slipUrl = "";
 
-            let payload = { name: name, amount: amount };
-
-            if (fileInput.files.length > 0) {
-                let file = fileInput.files[0];
-                let reader = new FileReader();
-                
-                reader.onload = async function(e) {
-                    payload.fileData = e.target.result;
-                    payload.fileName = file.name;
-                    payload.fileMimeType = file.type;
-                    await sendData(payload, btn);
-                };
-                reader.readAsDataURL(file);
-            } else {
-                await sendData(payload, btn);
-            }
-        }
-
-        async function sendData(payload, btn) {
             try {
-                let response = await fetch(WEB_APP_URL, {
+                // ถ้ามีการเลือกรูปภาพ ใช้วิธีอัปโหลดผ่านบริการสาธารณะแบบไม่ต้องใช้ API Key
+                if (fileInput.files.length > 0) {
+                    btn.innerText = 'กำลังอัปโหลดรูปภาพ...';
+                    let file = fileInput.files[0];
+                    let formData = new FormData();
+                    formData.append("reqtype", "fileupload");
+                    formData.append("fileToUpload", file);
+
+                    let uploadRes = await fetch("https://catbox.moe/user/api.php", {
+                        method: "POST",
+                        body: formData
+                    });
+                    slipUrl = await uploadRes.text();
+                }
+
+                btn.innerText = 'กำลังบันทึกข้อมูล...';
+                let payload = { name: name, amount: amount, slipUrl: slipUrl.trim() };
+
+                await fetch(WEB_APP_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // ป้องกันปัญหา CORS กับ Apps Script
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                let result = await response.json();
-                
-                if (result.result === "success") {
-                    alert('บันทึกข้อมูลและอัปโหลดสลิปสำเร็จ!');
-                    document.getElementById('addForm').reset();
-                    toggleAdminPanel();
-                    fetchData(); // ดึงข้อมูลมาอัปเดตหน้าตารางทันที
-                } else {
-                    alert('เกิดข้อผิดพลาด: ' + result.message);
-                }
+
+                alert('บันทึกข้อมูลสำเร็จ!');
+                document.getElementById('addForm').reset();
+                toggleAdminPanel();
+                setTimeout(fetchData, 1500);
             } catch (error) {
-                alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+                alert('เกิดข้อผิดพลาด: ' + error.message);
                 console.error(error);
             } finally {
                 btn.disabled = false;
@@ -188,6 +183,7 @@
         }
 
         function closeModal() {
+            document.getElementById('modalImg').src = '';
             document.getElementById('slipModal').classList.remove('flex');
             document.getElementById('slipModal').classList.add('hidden');
         }
