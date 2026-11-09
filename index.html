@@ -22,11 +22,11 @@
                 <h2 id="totalBalance" class="text-3xl font-extrabold text-white mt-1">กำลังโหลด...</h2>
             </div>
             <button onclick="toggleAdminPanel()" class="bg-slate-700 hover:bg-slate-600 text-xs text-slate-300 px-3 py-2 rounded-lg transition">
-                ⚙️ แก้ไขข้อมูล
+                ⚙️ โหมดแอดมิน
             </button>
         </div>
 
-        <!-- แผงแอดมิน (เปลี่ยนช่องสลิปเป็นอัปโหลดไฟล์) -->
+        <!-- แผงแอดมิน -->
         <div id="adminPanel" class="hidden bg-slate-800 border border-emerald-500/30 rounded-2xl p-6 mb-6 shadow-xl">
             <h3 class="text-lg font-semibold text-emerald-400 mb-4">🔧 เพิ่มรายการ (สำหรับแอดมิน)</h3>
             <form id="addForm" onsubmit="handleSubmit(event)" class="space-y-4">
@@ -74,7 +74,8 @@
     </div>
 
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbygXqpnEuVV030HFHWedesXsnG7PESd3j9eWPdUN2-AIqJFiLwP7h5ojdxdOIesHffN/exec"; // อย่าลืมใส่ URL ของคุณ
+        // ⚠️ ใส่ Web App URL ของคุณตรงนี้
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwq1OSbMEf3IUPZA3ome7MajH8C3JxcDUSLhNK8ThtyyfiBJ8CtrpmQ4H_NhCrbk5sm/exec";
 
         async function fetchData() {
             try {
@@ -130,7 +131,7 @@
             event.preventDefault();
             let btn = document.getElementById('submitBtn');
             btn.disabled = true;
-            btn.innerText = 'กำลังอัปโหลดและบันทึก...';
+            btn.innerText = 'กำลังอัปโหลดสลิปและบันทึก...';
 
             let name = document.getElementById('inputName').value;
             let amount = document.getElementById('inputAmount').value;
@@ -146,29 +147,33 @@
                     payload.fileData = e.target.result;
                     payload.fileName = file.name;
                     payload.fileMimeType = file.type;
-                    await sendDataToSheet(payload, btn);
+                    await sendData(payload, btn);
                 };
                 reader.readAsDataURL(file);
             } else {
-                await sendDataToSheet(payload, btn);
+                await sendData(payload, btn);
             }
         }
 
-        async function sendDataToSheet(payload, btn) {
+        async function sendData(payload, btn) {
             try {
-                await fetch(WEB_APP_URL, {
+                let response = await fetch(WEB_APP_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // ป้องกันปัญหา CORS กับ Apps Script
                     body: JSON.stringify(payload)
                 });
-
-                alert('บันทึกข้อมูลและอัปโหลดสำเร็จ!');
-                document.getElementById('addForm').reset();
-                toggleAdminPanel();
-                setTimeout(fetchData, 2000); // รอ 2 วินาทีแล้วโหลดตารางใหม่
+                let result = await response.json();
+                
+                if (result.result === "success") {
+                    alert('บันทึกข้อมูลและอัปโหลดสลิปสำเร็จ!');
+                    document.getElementById('addForm').reset();
+                    toggleAdminPanel();
+                    fetchData(); // ดึงข้อมูลมาอัปเดตหน้าตารางทันที
+                } else {
+                    alert('เกิดข้อผิดพลาด: ' + result.message);
+                }
             } catch (error) {
-                alert('เกิดข้อผิดพลาดในการบันทึก');
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
                 console.error(error);
             } finally {
                 btn.disabled = false;
